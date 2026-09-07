@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Check the software required by Assignment 04."""
+
 import shutil
 import sys
 
@@ -7,6 +9,7 @@ print("------------------------")
 print("Python:", sys.version.split()[0])
 
 ok = True
+
 for command in ("mn", "xterm", "ovs-vsctl", "tc"):
     found = shutil.which(command)
     print(f"{command:10s}:", found or "NOT FOUND")

@@ -1,51 +1,193 @@
 # RN-Lab – Assignment 04
 
-## Files
+This package contains the complete starting environment for ÜB4.
 
-- `standard_mininet.py`: introductory h1–s1–h2 topology.
-- `topology.py`: provided client–router–server infrastructure.
-- `start_lab.py`: starts the Assignment 04 environment and opens three host consoles.
-- `udp_client.py`, `udp_server.py`: example application programs.
-- `check_environment.py`: checks the VM installation.
+The important design principle is:
 
-## Check the VM
+> **Infrastructure and application code are separate.**
 
-    python3 check_environment.py
+`topology.py` and `start_lab.py` create the network. The Python UDP programs are applications that run inside the already-created Mininet hosts.
 
-## Introductory Mininet
+## 1. Check the VM
 
-    sudo python3 standard_mininet.py
+Run:
 
-Use the Mininet CLI:
+```bash
+python3 check_environment.py
+```
 
-    nodes
-    net
-    links
-    dump
+The check should report Python, Mininet, `mn`, `xterm`, `ovs-vsctl` and `tc`.
 
-and commands such as:
+## 2. A first Mininet example
 
-    h1 ip addr
-    h1 ip route
-    h1 ping -c 4 h2
+Before using the RN-Lab topology:
 
-## RN-Lab
+```bash
+sudo python3 standard_mininet.py
+```
 
-    sudo python3 start_lab.py
+This creates:
 
-Topology:
+```text
+h1 -------- s1 -------- h2
+```
 
-    client -------- router -------- server
-    10.0.1.2       10.0.1.1        10.0.2.2
-                   10.0.2.1
+In the terminal, try:
 
-The infrastructure files are provided by the course and should not be modified unless an exercise explicitly says so.
+```bash
+h1 ip addr
+h2 ip addr
+h1 ping -c 4 h2
+```
 
-## UDP example
+This is a useful first demonstration that commands such as `ip addr` and `ping` are executed inside the corresponding Mininet host namespace.
 
-Run `udp_server.py` in the server console and `udp_client.py` in the client console.
+## 3. Start the RN-Lab
 
-Network conditions are configured at the top of `topology.py`:
+Run:
 
-    LINK_DELAY = "20ms"
-    LINK_LOSS = 0
+```bash
+sudo python3 start_lab.py
+```
+
+The script creates:
+
+```text
+10.0.1.2/24        10.0.1.1/24       10.0.2.1/24        10.0.2.2/24
+   client  ---------------- router ---------------- server
+                 20 ms                         20 ms
+```
+
+There are **three separate terminals**:
+
+- RN-Lab Client
+- RN-Lab Router
+- RN-Lab Server
+
+The startup script explicitly configures the addresses and routes and then verifies connectivity before opening the terminals.
+
+## 4. Check the hosts
+
+In the client terminal:
+
+```bash
+ip addr
+ip route
+```
+
+You should see:
+
+```text
+10.0.1.2/24
+default via 10.0.1.1
+```
+
+In the router terminal:
+
+```bash
+ip addr
+ip route
+```
+
+You should see:
+
+```text
+10.0.1.1/24
+10.0.2.1/24
+```
+
+In the server terminal:
+
+```bash
+ip addr
+ip route
+```
+
+You should see:
+
+```text
+10.0.2.2/24
+default via 10.0.2.1
+```
+
+`ifconfig` also works if installed:
+
+```bash
+ifconfig
+```
+
+## 5. Ping between the terminals
+
+Yes: the terminals are actual Mininet network namespaces, so you can use `ping` exactly as you would on separate machines.
+
+From the client:
+
+```bash
+ping -c 4 10.0.1.1
+ping -c 4 10.0.2.2
+```
+
+The first ping reaches the router directly. The second crosses the router.
+
+From the server:
+
+```bash
+ping -c 4 10.0.2.1
+ping -c 4 10.0.1.2
+```
+
+The second ping crosses the router in the opposite direction.
+
+The startup script performs these checks automatically.
+
+## 6. Run the UDP example
+
+In the **server** terminal:
+
+```bash
+python3 udp_server.py
+```
+
+In the **client** terminal:
+
+```bash
+python3 udp_client.py
+```
+
+The default destination is:
+
+```text
+10.0.2.2:5000
+```
+
+You can also specify the destination explicitly:
+
+```bash
+python3 udp_client.py 10.0.2.2 5000 "Hello server"
+```
+
+The server accepts the same parameters:
+
+```bash
+python3 udp_server.py 10.0.2.2 5000
+```
+
+The client should receive an acknowledgement from the server.
+
+## 7. Important
+
+Do not modify `topology.py` unless the exercise explicitly asks you to do so.
+
+The infrastructure is deliberately provided separately from the application programs. This separation is important for the rest of the RN-Lab.
+
+## 8. Stopping the lab
+
+Return to the terminal in which `start_lab.py` is running and press ENTER.
+
+If Mininet is left behind after an experiment, run:
+
+```bash
+sudo mn -c
+```
+
+Use `mn -c` only when necessary to clean up stale Mininet state.
