@@ -45,6 +45,7 @@ def print_network_state(net):
     info("--- switch s1 ---\n")
     info(net["s1"].cmd("ovs-ofctl show s1 2>/dev/null || true"))
     info("\n")
+
     info("=" * 72 + "\n")
 
 
@@ -74,6 +75,43 @@ def check(node, command, description):
             info(f"       {detail}\n")
 
     return success
+
+
+def verify_switch(net):
+    """Verify that the standalone OVS switch is operational."""
+    info("\n*** Verifying switch forwarding...\n")
+
+    output = net["s1"].cmd(
+        "ovs-vsctl get-fail-mode s1 2>/dev/null"
+    ).strip()
+
+    if output != "standalone":
+        info(
+            f"  [FAILED] switch s1 is not in standalone mode "
+            f"(reported: {output or 'unknown'})\n"
+        )
+        return False
+
+    info("  [OK] switch s1 is in standalone mode\n")
+
+    ports = net["s1"].cmd(
+        "ovs-ofctl show s1 2>/dev/null"
+    )
+
+    port_count = sum(
+        1 for line in ports.splitlines()
+        if "(s1-eth" in line
+    )
+
+    if port_count < 4:
+        info(
+            f"  [FAILED] switch s1 exposes only {port_count} host ports; "
+            "expected 4\n"
+        )
+        return False
+
+    info(f"  [OK] switch s1 has {port_count} host-facing ports\n")
+    return True
 
 
 def verify_connectivity(net):
@@ -123,6 +161,9 @@ def main():
 
         configure_addresses(net)
         print_network_state(net)
+
+        if not verify_switch(net):
+            return 1
 
         if not verify_connectivity(net):
             return 1
