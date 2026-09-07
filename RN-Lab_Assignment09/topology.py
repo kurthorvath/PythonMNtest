@@ -1,15 +1,28 @@
+#!/usr/bin/env python3
+"""RN-Lab topology for Assignment 09.
+
+Infrastructure only:
+- topology and link characteristics are defined here
+- IP addresses are configured by start_lab.py
+"""
+
 from mininet.topo import Topo
 from mininet.link import TCLink
 
+
 class EthernetLabTopo(Topo):
+    """Single Ethernet LAN with four hosts and one switch."""
+
     def build(self):
-        c1=self.addHost("client1", ip="10.0.1.2/24")
-        c2=self.addHost("client2", ip="10.0.1.3/24")
-        s1=self.addHost("server1", ip="10.0.1.10/24")
-        s2=self.addHost("server2", ip="10.0.1.11/24")
-        sw=self.addSwitch("s1")
+        client1 = self.addHost("client1")
+        client2 = self.addHost("client2")
+        server1 = self.addHost("server1")
+        server2 = self.addHost("server2")
 
-        for h in (c1,c2,s1,s2):
-            self.addLink(h,sw,cls=TCLink,delay="1ms")
+        switch = self.addSwitch("s1")
 
-topos={"ethernetlab":EthernetLabTopo}
+        for host in (client1, client2, server1, server2):
+            self.addLink(host, switch, cls=TCLink, delay="1ms")
+
+
+topos = {"ethernetlab": EthernetLabTopo}
