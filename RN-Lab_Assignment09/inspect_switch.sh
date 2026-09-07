@@ -1,12 +1,12 @@
 #!/bin/bash
 
-echo "=== Mininet switch information ==="
+echo "=== Switch ports ==="
 ovs-ofctl show s1 2>/dev/null || true
 
 echo
-echo "=== Forwarding database ==="
+echo "=== Switch forwarding database ==="
 ovs-appctl fdb/show s1 2>/dev/null || true
 
 echo
-echo "If the commands above are unavailable, inspect the switch using:"
-echo "    sh ovs-ofctl dump-flows s1"
+echo "=== OpenFlow flows ==="
+ovs-ofctl dump-flows s1 2>/dev/null || true

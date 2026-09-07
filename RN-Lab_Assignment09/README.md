@@ -1,50 +1,36 @@
-# ÜB9 student environment
+# RN-Lab – ÜB9
 
-The assignment text and pedagogical scope are unchanged. The Python
-infrastructure has been cleaned up so that topology definition and
-runtime network configuration are separated.
+This package keeps the ÜB9 assignment scope unchanged:
+Ethernet, ARP and switching on a four-host LAN.
 
-## Start
+Start:
 
-```bash
-sudo python3 start_lab.py
-```
+    sudo python3 start_lab.py
 
 The startup script:
-
-1. creates the existing four-host / one-switch LAN
-2. explicitly configures the IPv4 addresses
-3. prints the actual interface and routing state
-4. verifies LAN connectivity
-5. opens the host terminals only after successful verification
-
-## Base LAN
-
-```text
-client1 ----\
-client2 ----- switch ---- server1
-server2 ----/
-```
+- creates the four-host / one-switch LAN
+- explicitly configures the IPv4 addresses
+- prints the actual interface/routing state
+- verifies LAN connectivity
+- opens terminals only after successful verification
 
 Addresses:
-
 - client1: 10.0.1.2/24
 - client2: 10.0.1.3/24
 - server1: 10.0.1.10/24
 - server2: 10.0.1.11/24
 
-There is no router or default gateway because all four hosts are on
-the same IPv4 LAN.
+No router or default gateway is required because all hosts are in the
+same IPv4 LAN.
 
-## Useful commands
+Useful commands from the assignment:
 
-```bash
-ip -br addr
-ip neigh
-ping -c 3 10.0.1.10
-./capture.sh eth0 /tmp/ub9.pcap
-./inspect_switch.sh
-```
+    ip -br addr
+    ip link
+    ip neigh
+    ping -c 4 10.0.1.3
+    ip neigh flush all
+    tcpdump -i client1-eth0 -nn -e arp
+    ovs-ofctl dump-flows s1
 
-The focus remains Ethernet, ARP, MAC addresses, broadcast/flooding
-and switch learning.
+The capture helper includes Ethernet headers with tcpdump -e.

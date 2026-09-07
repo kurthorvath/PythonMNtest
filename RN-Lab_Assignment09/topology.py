@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""RN-Lab topology for Assignment 09.
+"""RN-Lab topology for ÜB9.
 
 Infrastructure only:
-- topology and link characteristics are defined here
+- four hosts
+- one Ethernet switch
+- no router
 - IP addresses are configured by start_lab.py
 """
 
@@ -19,10 +21,12 @@ class EthernetLabTopo(Topo):
         server1 = self.addHost("server1")
         server2 = self.addHost("server2")
 
-        switch = self.addSwitch("s1")
+        s1 = self.addSwitch("s1")
 
-        for host in (client1, client2, server1, server2):
-            self.addLink(host, switch, cls=TCLink, delay="1ms")
+        self.addLink(client1, s1, intfName1="client1-eth0", cls=TCLink)
+        self.addLink(client2, s1, intfName1="client2-eth0", cls=TCLink)
+        self.addLink(server1, s1, intfName1="server1-eth0", cls=TCLink)
+        self.addLink(server2, s1, intfName1="server2-eth0", cls=TCLink)
 
 
 topos = {"ethernetlab": EthernetLabTopo}
