@@ -2,16 +2,16 @@
 """
 RN-Lab ÜB8 initial topology.
 
-IMPORTANT:
-This file deliberately contains only the topology supplied for Ü8.1.
-Students extend topology.py themselves in Ü8.2 by adding r3 and the
-alternative path.
+This is the topology supplied for Ü8.1. Students extend topology.py
+themselves in Ü8.2 by adding r3 and the alternative path.
 
-IP addresses and routing are configured by start_lab.py.
+The two clients are on the same left LAN. Since no SDN controller is
+used, the Open vSwitch is explicitly put into standalone mode so it
+performs ordinary Layer-2 switching.
 """
 
 from mininet.topo import Topo
-from mininet.node import Node
+from mininet.node import Node, OVSSwitch
 from mininet.link import TCLink
 
 
@@ -45,8 +45,14 @@ class RoutingLabTopo(Topo):
         r2 = self.addHost("r2", cls=LinuxRouter)
         server = self.addHost("server")
 
-        # Left LAN: client1, client2 and r1 share 10.0.1.0/24.
-        s1 = self.addSwitch("s1")
+        # Shared left LAN.
+        # No controller is used in this lab, so the switch must operate
+        # in normal standalone Layer-2 switching mode.
+        s1 = self.addSwitch(
+            "s1",
+            cls=OVSSwitch,
+            failMode="standalone"
+        )
 
         self.addLink(
             client1, s1,

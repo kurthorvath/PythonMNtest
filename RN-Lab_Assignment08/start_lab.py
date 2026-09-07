@@ -2,9 +2,9 @@
 """
 Start the initial RN-Lab environment for ÜB8.
 
-This script configures only the initial topology from Ü8.1.
-The additional router/path required in Ü8.2 is intentionally NOT
-created or configured here; students add and configure it themselves.
+Only the initial topology from Ü8.1 is configured here.
+The additional router r3 and alternative path required in Ü8.2
+are deliberately left for the students to implement.
 """
 
 import sys
@@ -45,7 +45,6 @@ def configure_initial_addresses(net):
 
 
 def configure_initial_routes(net):
-    # Both clients are on the same left LAN.
     net["client1"].cmd(
         "ip route replace default via 10.0.1.1 dev client1-eth0"
     )
@@ -53,17 +52,14 @@ def configure_initial_routes(net):
         "ip route replace default via 10.0.1.1 dev client2-eth0"
     )
 
-    # R1 -> server network via R2.
     net["r1"].cmd(
         "ip route replace 10.0.2.0/24 via 10.0.12.2 dev r1-eth1"
     )
 
-    # R2 -> client LAN.
     net["r2"].cmd(
         "ip route replace 10.0.1.0/24 via 10.0.12.1 dev r2-eth0"
     )
 
-    # Server -> client LAN.
     net["server"].cmd(
         "ip route replace 10.0.1.0/24 via 10.0.2.1 dev server-eth0"
     )
@@ -81,12 +77,17 @@ def print_network_state(net):
         info(node.cmd("ip route"))
         info("\n")
 
+    info("--- switch s1 ---\n")
+    info(net["s1"].cmd("ovs-vsctl get-fail-mode s1"))
+    info("\n")
+    info(net["s1"].cmd("ovs-ofctl show s1 2>/dev/null || true"))
+    info("\n")
+
     info("=" * 72 + "\n")
 
 
-def run_check(node, command, description):
-    # Use a shell marker because Mininet Host does not provide
-    # lastCmdWasOK() in all supported Mininet versions.
+def check(node, command, description):
+    """Run a command and evaluate its shell return code portably."""
     marker = "__RN_RC__"
     output = node.cmd(f"{command}; printf '\\n{marker}%s\\n' $?")
 
@@ -102,19 +103,32 @@ def run_check(node, command, description):
         else:
             details.append(line)
 
-    ok = rc == 0
-    info(f"  [{'OK' if ok else 'FAILED'}] {description}\n")
+    success = rc == 0
+    info(f"  [{'OK' if success else 'FAILED'}] {description}\n")
 
-    if not ok:
-        text = "\n".join(details).strip()
-        if text:
-            info(f"       {text}\n")
+    if not success:
+        detail = "\n".join(details).strip()
+        if detail:
+            info(f"       {detail}\n")
 
-    return ok
+    return success
 
 
 def verify_initial_topology(net):
     info("\n*** Verifying initial ÜB8 topology...\n")
+
+    switch_mode = net["s1"].cmd(
+        "ovs-vsctl get-fail-mode s1"
+    ).strip()
+
+    if switch_mode != "standalone":
+        info(
+            f"  [FAILED] switch s1 is not in standalone mode "
+            f"(reported: {switch_mode or 'unknown'})\n"
+        )
+        return False
+
+    info("  [OK] switch s1 is in standalone mode\n")
 
     tests = [
         (net["client1"], "ping -c 1 -W 1 10.0.1.1",
@@ -133,7 +147,7 @@ def verify_initial_topology(net):
 
     failures = 0
     for node, command, description in tests:
-        if not run_check(node, command, description):
+        if not check(node, command, description):
             failures += 1
 
     if failures:
