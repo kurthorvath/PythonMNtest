@@ -1,27 +1,51 @@
-# RN-Lab – Assignment 08
+# RN-Lab – ÜB8
 
-Updated infrastructure only; the ÜB8 assignment text and topology
-concept are unchanged.
+This package implements the **initial topology from Ü8.1**. The
+assignment text is the specification.
 
-Start with:
+## Initial topology
+
+    client1 \
+              switch -- r1 -- r2 -- server
+    client2 /
+
+The two clients are on the same left LAN.
+
+## Important
+
+The additional router `r3` and the alternative path are deliberately
+NOT included in the supplied topology. They are introduced by the
+student in Ü8.2, exactly as required by the assignment.
+
+Likewise, the different link delays of Ü8.3 are configured by the
+student in `topology.py`.
+
+The startup script only prepares and verifies the initial Ü8.1
+environment.
+
+## Start
 
     sudo python3 start_lab.py
 
-The startup script explicitly configures addresses/routes, prints the
-actual network state, verifies connectivity, and opens terminals only
-after successful verification.
+The script explicitly configures the initial IP addresses and routes,
+prints the actual configuration, verifies the initial end-to-end
+connection, and then opens the terminals.
 
-The two routing paths remain:
+## Initial addressing
 
-    R1 -- R2 -- Server
-    R1 -- R3 -- Server
+- client1: 10.0.1.2/24
+- client2: 10.0.1.3/24
+- r1-eth0: 10.0.1.1/24
+- r1-eth1: 10.0.12.1/30
+- r2-eth0: 10.0.12.2/30
+- r2-eth1: 10.0.2.1/24
+- server-eth0: 10.0.2.2/24
 
-with 5 ms links on the R2 path and 30 ms links on the R3 path.
-
-Useful commands:
+Useful commands from the assignment:
 
     ip -br addr
     ip route
     ping -c 3 10.0.2.2
     traceroute 10.0.2.2
-    ./capture.sh eth0 /tmp/ub8.pcap
+
+The TCP client/server remain unchanged.

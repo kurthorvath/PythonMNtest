@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""RN-Lab topology for Assignment 08.
+"""
+RN-Lab ÜB8 initial topology.
 
-Infrastructure only:
-- topology and link characteristics are defined here
-- IP addresses and routing are configured by start_lab.py
+IMPORTANT:
+This file deliberately contains only the topology supplied for Ü8.1.
+Students extend topology.py themselves in Ü8.2 by adding r3 and the
+alternative path.
+
+IP addresses and routing are configured by start_lab.py.
 """
 
 from mininet.topo import Topo
@@ -24,56 +28,56 @@ class LinuxRouter(Node):
 
 
 class RoutingLabTopo(Topo):
-    """Two-path routing topology used in ÜB8."""
+    """
+    Initial topology for Ü8.1:
+
+        client1 \
+                  s1 ---- r1 ---- r2 ---- server
+        client2 /
+
+    client1 and client2 are on the same left LAN.
+    """
 
     def build(self):
         client1 = self.addHost("client1")
         client2 = self.addHost("client2")
         r1 = self.addHost("r1", cls=LinuxRouter)
         r2 = self.addHost("r2", cls=LinuxRouter)
-        r3 = self.addHost("r3", cls=LinuxRouter)
         server = self.addHost("server")
 
+        # Left LAN: client1, client2 and r1 share 10.0.1.0/24.
+        s1 = self.addSwitch("s1")
+
         self.addLink(
-            client1, r1,
+            client1, s1,
             intfName1="client1-eth0",
-            intfName2="r1-eth0",
-            cls=TCLink, delay="5ms"
+            cls=TCLink
         )
-
         self.addLink(
-            client2, r1,
+            client2, s1,
             intfName1="client2-eth0",
-            intfName2="r1-eth0b",
-            cls=TCLink, delay="5ms"
+            cls=TCLink
+        )
+        self.addLink(
+            s1, r1,
+            intfName2="r1-eth0",
+            cls=TCLink
         )
 
+        # R1 -- R2 point-to-point network.
         self.addLink(
             r1, r2,
             intfName1="r1-eth1",
             intfName2="r2-eth0",
-            cls=TCLink, delay="5ms"
+            cls=TCLink
         )
 
-        self.addLink(
-            r1, r3,
-            intfName1="r1-eth2",
-            intfName2="r3-eth0",
-            cls=TCLink, delay="30ms"
-        )
-
+        # R2 -- server network.
         self.addLink(
             r2, server,
             intfName1="r2-eth1",
             intfName2="server-eth0",
-            cls=TCLink, delay="5ms"
-        )
-
-        self.addLink(
-            r3, server,
-            intfName1="r3-eth1",
-            intfName2="server-eth1",
-            cls=TCLink, delay="30ms"
+            cls=TCLink
         )
 
 
