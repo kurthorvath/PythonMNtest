@@ -1,39 +1,27 @@
 # RN-Lab – Assignment 08
 
-The assignment text remains unchanged. This package only updates the
-Mininet infrastructure so that the existing topology and routing
-experiments are configured reliably.
+Updated infrastructure only; the ÜB8 assignment text and topology
+concept are unchanged.
 
-## Start
+Start with:
 
-```bash
-sudo python3 start_lab.py
-```
+    sudo python3 start_lab.py
 
-The startup script:
+The startup script explicitly configures addresses/routes, prints the
+actual network state, verifies connectivity, and opens terminals only
+after successful verification.
 
-1. creates the topology from `topology.py`
-2. explicitly configures all IPv4 addresses
-3. enables IPv4 forwarding on the routers
-4. installs the required static routes
-5. prints the actual `ip -br addr` and `ip route` state
-6. verifies local and end-to-end connectivity
-7. opens the host/router terminals only if verification succeeds
+The two routing paths remain:
 
-## Topology
+    R1 -- R2 -- Server
+    R1 -- R3 -- Server
 
-The original two-path routing topology is retained:
+with 5 ms links on the R2 path and 30 ms links on the R3 path.
 
-- client1 → r1
-- client2 → r1
-- r1 → r2 → server
-- r1 → r3 → server
+Useful commands:
 
-The R1–R2–server path uses 5 ms links, while the R1–R3–server
-path uses 30 ms links.
-
-## Files
-
-- `topology.py` – topology and link characteristics
-- `start_lab.py` – runtime IP/routing configuration and verification
-- `capture.sh` – packet capture helper
+    ip -br addr
+    ip route
+    ping -c 3 10.0.2.2
+    traceroute 10.0.2.2
+    ./capture.sh eth0 /tmp/ub8.pcap
