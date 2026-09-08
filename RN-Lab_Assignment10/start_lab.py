@@ -1,171 +1,98 @@
 #!/usr/bin/env python3
-"""Start the RN-Lab environment for Assignment 10.
-
-The exercise deliberately contains a forensic configuration fault.
-This script configures the complete network, prints the actual state,
-checks the healthy local links, confirms the expected end-to-end
-failure, and then opens the terminals.
-
-The intentional fault is NOT repaired here: students must identify it
-during the forensic exercise.
-"""
-
 import sys
-
 from mininet.net import Mininet
 from mininet.log import setLogLevel, info
 from mininet.term import makeTerm
-
 from topology import ForensicsTopo
 
+def configure_network(net):
+    c1, c2, r, s = [net[x] for x in ("client1", "client2", "router", "server")]
 
-def configure_interface(node, interface, address):
-    """Explicitly configure one IPv4 interface."""
-    node.cmd(f"ip addr flush dev {interface}")
-    node.cmd(f"ip addr add {address} dev {interface}")
-    node.cmd(f"ip link set dev {interface} up")
+    for host, intf, addr in [
+        (c1, "client1-eth0", "10.10.1.10/24"),
+        (c2, "client2-eth0", "10.10.1.11/24"),
+        (r, "router-eth0", "10.10.1.1/24"),
+        (r, "router-eth1", "10.10.2.1/24"),
+        (s, "server-eth0", "10.10.2.10/24"),
+    ]:
+        host.cmd(f"ip addr flush dev {intf}")
+        host.cmd(f"ip addr add {addr} dev {intf}")
+        host.cmd(f"ip link set dev {intf} up")
 
+    c1.cmd("ip route replace default via 10.10.1.1 dev client1-eth0")
+    c2.cmd("ip route replace default via 10.10.1.1 dev client2-eth0")
+    r.cmd("sysctl -w net.ipv4.ip_forward=1")
 
-def configure_addresses(net):
-    addresses = {
-        "client1": [
-            ("client1-eth0", "10.10.1.10/24"),
-        ],
-        "client2": [
-            ("client2-eth0", "10.10.1.11/24"),
-        ],
-        "router": [
-            ("router-eth0", "10.10.1.1/24"),
-            ("router-eth1", "10.10.2.1/24"),
-        ],
-        "server": [
-            ("server-eth0", "10.10.2.10/24"),
-        ],
-    }
+    # INTENTIONAL FORENSIC FAULT: students must discover and repair this.
+    s.cmd("ip route replace default via 10.10.2.254 dev server-eth0")
 
-    for node_name, interfaces in addresses.items():
-        node = net[node_name]
-        for interface, address in interfaces:
-            configure_interface(node, interface, address)
-
-
-def configure_routes(net):
-    """Configure normal host routing, then install the intentional fault."""
-    client1 = net["client1"]
-    client2 = net["client2"]
-    server = net["server"]
-
-    client1.cmd("ip route replace default via 10.10.1.1 dev client1-eth0")
-    client2.cmd("ip route replace default via 10.10.1.1 dev client2-eth0")
-
-    # Intentional forensic fault:
-    # the server's real gateway is 10.10.2.1, but the configured gateway
-    # is deliberately invalid. Do not repair this in the startup script.
-    server.cmd("ip route replace default via 10.10.2.254 dev server-eth0")
-
-
-def print_network_state(net):
+def print_state(net):
     info("\n" + "=" * 72 + "\n")
-    info("*** ÜB10: actual network configuration\n")
+    info("*** ÜB10 forensic baseline – actual configuration\n")
     info("=" * 72 + "\n")
-
-    for node in net.hosts:
-        info(f"\n--- {node.name} ---\n")
-        info(node.cmd("ip -br addr"))
-        info("\n")
-        info(node.cmd("ip route"))
+    for host in net.hosts:
+        info(f"\n--- {host.name} ---\n")
+        info(host.cmd("ip -br addr"))
+        info(host.cmd("ip route"))
         info("\n")
 
-    info("=" * 72 + "\n")
+def ping_ok(node, destination):
+    # Portable check: do NOT use Host.lastCmdWasOK().
+    output = node.cmd(f"ping -c 1 -W 1 {destination}; echo __RN_RC__$?")
+    for line in output.splitlines():
+        if line.startswith("__RN_RC__"):
+            try:
+                return int(line[len("__RN_RC__"):]) == 0
+            except ValueError:
+                return False
+    return False
 
+def verify_baseline(net):
+    info("*** Verifying the forensic baseline...\n")
 
-def check(node, command, description):
-    output = node.cmd(command).strip()
-    success = node.lastCmdWasOK()
-
-    status = "OK" if success else "FAILED"
-    info(f"  [{status}] {description}\n")
-
-    if not success and output:
-        info(f"       {output}\n")
-
-    return success
-
-
-def verify_environment(net):
-    """Check healthy infrastructure and confirm the intentional failure."""
-    client1 = net["client1"]
-    client2 = net["client2"]
-    router = net["router"]
-
-    info("\n*** Verifying the forensic baseline...\n")
-
-    healthy_tests = [
-        (client1, "ping -c 1 -W 1 10.10.1.1",
-         "client1 -> router"),
-        (client2, "ping -c 1 -W 1 10.10.1.1",
-         "client2 -> router"),
-        (router, "ping -c 1 -W 1 10.10.2.10",
-         "router -> server"),
+    tests = [
+        ("client1", "10.10.1.1", "client1 -> router"),
+        ("client2", "10.10.1.1", "client2 -> router"),
+        ("router", "10.10.2.10", "router -> server"),
     ]
 
     failures = 0
-    for node, command, description in healthy_tests:
-        if not check(node, command, description):
+    for host_name, destination, description in tests:
+        ok = ping_ok(net[host_name], destination)
+        info(f"  [{'OK' if ok else 'FAILED'}] {description}\n")
+        if not ok:
             failures += 1
 
     if failures:
-        info(
-            f"\n*** ERROR: {failures} healthy infrastructure test(s) failed.\n"
-            "*** The forensic environment cannot be started reliably.\n"
-        )
+        info(f"\n*** ERROR: {failures} baseline infrastructure test(s) failed.\n")
+        info("*** Terminals will not be opened.\n")
         return False
 
-    # This failure is intentional and is part of the forensic evidence.
-    info("\n*** Expected forensic symptom:\n")
-    server_reachable = check(
-        client1,
-        "ping -c 1 -W 1 10.10.2.10",
-        "client1 -> server (expected to fail)"
-    )
+    info("\n*** Checking intentional forensic symptom...\n")
 
-    if server_reachable:
-        info(
-            "*** WARNING: the expected end-to-end failure did not occur.\n"
-            "*** Check whether the intentional fault was altered.\n"
-        )
-    else:
-        info("*** Expected end-to-end failure confirmed.\n")
+    c1_ok = ping_ok(net["client1"], "10.10.2.10")
+    s_ok = ping_ok(net["server"], "10.10.1.10")
 
+    info(f"  [{'UNEXPECTED SUCCESS' if c1_ok else 'EXPECTED FAILURE'}] "
+         "client1 -> server\n")
+    info(f"  [{'UNEXPECTED SUCCESS' if s_ok else 'EXPECTED FAILURE'}] "
+         "server -> client1\n")
+
+    info("\n*** Baseline accepted. The communication failure is intentional.\n")
     return True
 
-
 def main():
-    net = Mininet(
-        topo=ForensicsTopo(),
-        controller=None,
-        autoSetMacs=True
-    )
-
+    net = Mininet(topo=ForensicsTopo(), controller=None, autoSetMacs=True)
     try:
-        info("*** Starting ÜB10 forensic Mininet environment...\n")
+        info("*** Starting ÜB10 Network Forensics environment...\n")
         net.start()
+        configure_network(net)
+        print_state(net)
 
-        configure_addresses(net)
-        configure_routes(net)
+        if not verify_baseline(net):
+            return 1
 
-        print_network_state(net)
-
-        if not verify_environment(net):
-            net.stop()
-            sys.exit(1)
-
-        info(
-            "\n*** Environment ready. "
-            "Do not repair the configuration before following the "
-            "forensic workflow in the assignment.\n"
-        )
-
+        info("\n*** Opening ÜB10 terminals...\n")
         for host, title in [
             (net["client1"], "ÜB10 client1"),
             (net["client2"], "ÜB10 client2"),
@@ -178,11 +105,10 @@ def main():
             input("\nPress ENTER to stop the Mininet environment...")
         except KeyboardInterrupt:
             pass
-
+        return 0
     finally:
         net.stop()
 
-
 if __name__ == "__main__":
     setLogLevel("info")
-    main()
+    sys.exit(main())
