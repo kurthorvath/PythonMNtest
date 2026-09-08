@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
-"""RN-Lab topology for Assignment 10.
+"""
+RN-Lab ÜB10 – Network Forensics
 
-The topology is intentionally simple. The forensic fault is configured
-at runtime in start_lab.py, not in the topology definition.
+Initial forensic topology:
+
+    client1 --\
+               sw1 -- router -- sw2 -- server
+    client2 --/
+
+The server contains an intentional routing fault configured by
+start_lab.py. The topology itself must provide normal Layer-2
+forwarding; therefore both Open vSwitch instances are explicitly
+configured in standalone mode. No controller is required.
 """
 
 from mininet.topo import Topo
-from mininet.node import Node
+from mininet.node import Node, OVSSwitch
 from mininet.link import TCLink
 
 
 class LinuxRouter(Node):
-    """Linux host configured to forward IPv4 packets."""
+    """Linux router with IPv4 forwarding enabled."""
 
     def config(self, **params):
         super().config(**params)
@@ -26,13 +35,23 @@ class ForensicsTopo(Topo):
     def build(self):
         client1 = self.addHost("client1")
         client2 = self.addHost("client2")
-        server = self.addHost("server")
         router = self.addHost("router", cls=LinuxRouter)
+        server = self.addHost("server")
 
-        sw1 = self.addSwitch("sw1")
-        sw2 = self.addSwitch("sw2")
+        # Explicit standalone OVS switches.
+        # The lab does not use an SDN controller.
+        sw1 = self.addSwitch(
+            "sw1",
+            cls=OVSSwitch,
+            failMode="standalone"
+        )
+        sw2 = self.addSwitch(
+            "sw2",
+            cls=OVSSwitch,
+            failMode="standalone"
+        )
 
-        # Client LAN
+        # Client LAN.
         self.addLink(
             client1, sw1,
             intfName1="client1-eth0",
@@ -52,7 +71,7 @@ class ForensicsTopo(Topo):
             delay="5ms"
         )
 
-        # Router/server LAN
+        # Server LAN.
         self.addLink(
             router, sw2,
             intfName1="router-eth1",
